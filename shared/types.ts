@@ -1,4 +1,4 @@
-export const CHUNK_SIZE = 100 * 1024 * 1024; // 100MB per chunk for upload/download
+export const CHUNK_SIZE = 10 * 1024 * 1024;
 
 export const SUBSCRIPTION_LIMITS = {
 	free: { storage: 1 * 1024 ** 3 },
