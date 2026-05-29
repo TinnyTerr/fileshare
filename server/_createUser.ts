@@ -19,7 +19,7 @@ export async function createUser({
 	// Insert user
 	const query = db.query(`
     INSERT INTO users (
-      email,
+      username,
       password_hash,
       role,
       subscription_tier
