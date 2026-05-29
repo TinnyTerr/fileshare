@@ -52,6 +52,8 @@ jobs:
 
       - name: Build client binary
         run: |
+          mkdir -p dist
+
           bun build client/index.ts \
             --compile \
             --target ${{ matrix.target }} \
@@ -62,6 +64,11 @@ jobs:
         run: |
           SHA=$(sha256sum dist/fileshare-${{ matrix.platform }}${{ matrix.ext }} | awk '{print $1}')
           echo "SHA256=$SHA" >> $GITHUB_OUTPUT
+
+      - name: Generate checksum file
+        run: |
+          echo "${{ steps.sha256.outputs.SHA256 }}  fileshare-${{ matrix.platform }}${{ matrix.ext }}" \
+            > dist/fileshare-${{ matrix.platform }}${{ matrix.ext }}.sha256
 
       - name: Publish to server
         run: |
@@ -77,7 +84,9 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: fileshare-${{ matrix.platform }}
-          path: dist/fileshare-${{ matrix.platform }}${{ matrix.ext }}
+          path: |
+            dist/fileshare-${{ matrix.platform }}${{ matrix.ext }}
+            dist/fileshare-${{ matrix.platform }}${{ matrix.ext }}.sha256
 
   create-release:
     runs-on: ubuntu-latest
@@ -87,23 +96,27 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v3
         with:
-          path: dist/
+          path: dist
+          merge-multiple: true
 
-      - name: Extract version
-        id: version
-        run: echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+      - name: List downloaded files
+        run: find dist -type f
 
       - name: Create Gitea release
         uses: akkuman/gitea-release-action@v1
         with:
           token: ${{ secrets.GITEA_TOKEN }}
-          tag_name: ${{ steps.version.outputs.VERSION }}
-          name: Release ${{ steps.version.outputs.VERSION }}
+          base_url: https://gitea.example.com
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
           body: |
             ## Changes
+
             See commit history for details.
 
-            ## Download
-            Pick the binary for your platform below.
+            ## Downloads
+
+            Choose the binary matching your platform.
+
           files: |
-            dist/**/*
+            dist/*
