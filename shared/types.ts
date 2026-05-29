@@ -3,7 +3,7 @@ export const CHUNK_SIZE = 100 * 1024 * 1024; // 100MB per chunk for upload/downl
 export const SUBSCRIPTION_LIMITS = {
 	free: { storage: 1 * 1024 ** 3 },
 	pro: { storage: 10 * 1024 ** 3 },
-	enterprise: { storage: Infinity },
+	full: { storage: Infinity },
 } as const;
 
 export type SubscriptionTier = keyof typeof SUBSCRIPTION_LIMITS;
