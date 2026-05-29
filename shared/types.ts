@@ -1,9 +1,9 @@
-export const CHUNK_SIZE = 100 * 1024 * 1024; // 100MB — enforced on both client and server
+export const CHUNK_SIZE = 100 * 1024 * 1024; // 100MB per chunk for upload/download
 
 export const SUBSCRIPTION_LIMITS = {
-  free:       { storage: 1  * 1024 ** 3, max_file_size: 500 * 1024 ** 2 },
-  pro:        { storage: 10 * 1024 ** 3, max_file_size: 5   * 1024 ** 3 },
-  enterprise: { storage: Infinity,       max_file_size: Infinity },
+  free:       { storage: 1  * 1024 ** 3 },
+  pro:        { storage: 10 * 1024 ** 3 },
+  enterprise: { storage: Infinity       },
 } as const;
 
 export type SubscriptionTier = keyof typeof SUBSCRIPTION_LIMITS;

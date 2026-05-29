@@ -5,7 +5,7 @@ import {
   handleShareGroup, handleUnshareGroup,
 } from './routes/files';
 import { handleListUsers, handleGetUser, handleUpdateSubscription, handleUpdateRole, handleDeleteUser, handleStats } from './routes/admin';
-import { handleGetLatestVersion, handleDownloadClient, handlePublishVersion, handleListVersions } from './routes/versions';
+import { handleGetLatestVersion, handleDownloadClient, handlePublishVersion, handleListVersions, handleInstallSh, handleInstallPs1 } from './routes/versions';
 import {
   handleCreateGroup, handleListGroups, handleGetGroup, handleUpdateGroup, handleDeleteGroup,
   handleAddMember, handleRemoveMember, handleCreateInvite, handleListInvites, handleRevokeInvite,
@@ -109,6 +109,10 @@ async function route(req: Request, method: string, path: string): Promise<Respon
   if (dlDataMatch) {
     if (method === 'GET' || method === 'POST') return handleDownloadViaLink(req, dlDataMatch[1]!);
   }
+
+  // Install scripts
+  if (method === 'GET' && path === '/install.sh')  return handleInstallSh(req);
+  if (method === 'GET' && path === '/install.ps1') return handleInstallPs1(req);
 
   // Versions
   if (method === 'GET'  && path === '/api/version')         return handleGetLatestVersion(req);

@@ -96,9 +96,6 @@ export async function handleInitUpload(req: Request): Promise<Response> {
   const user = db.query('SELECT subscription_tier, storage_used FROM users WHERE id = ?').get(auth.userId) as any;
   const limits = SUBSCRIPTION_LIMITS[user.subscription_tier as keyof typeof SUBSCRIPTION_LIMITS];
 
-  if (size > limits.max_file_size) {
-    return json({ error: `File exceeds max size for your plan (${Math.floor(Number(limits.max_file_size) / 1024 ** 2)}MB)`, code: 'QUOTA_EXCEEDED' }, 413);
-  }
   if (user.storage_used + size > limits.storage) {
     return json({ error: 'Storage quota exceeded', code: 'QUOTA_EXCEEDED' }, 413);
   }

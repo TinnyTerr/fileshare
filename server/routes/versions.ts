@@ -117,6 +117,123 @@ export async function handlePublishVersion(req: Request): Promise<Response> {
   return json({ ok: true, version, platform, filename, sha256 }, 201);
 }
 
+export async function handleInstallSh(_req: Request): Promise<Response> {
+  const serverUrl = process.env.SERVER_URL || `http://localhost:${process.env.PORT || 3000}`;
+  const script = `#!/usr/bin/env sh
+set -e
+
+SERVER_URL="${serverUrl}"
+INSTALL_DIR="\${INSTALL_DIR:-\$HOME/.local/bin}"
+
+OS=\$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=\$(uname -m)
+
+case "\$OS" in
+  linux)  OS_NAME="linux"  ;;
+  darwin) OS_NAME="darwin" ;;
+  *) echo "Unsupported OS: \$OS"; exit 1 ;;
+esac
+
+case "\$ARCH" in
+  x86_64|amd64)  ARCH_NAME="x64"   ;;
+  arm64|aarch64) ARCH_NAME="arm64" ;;
+  *) echo "Unsupported arch: \$ARCH"; exit 1 ;;
+esac
+
+PLATFORM="\${OS_NAME}-\${ARCH_NAME}"
+
+echo "Fetching latest version for \${PLATFORM}..."
+VERSION_JSON=\$(curl -fsSL "\${SERVER_URL}/api/version?platform=\${PLATFORM}")
+
+DOWNLOAD_URL=\$(echo "\$VERSION_JSON" | grep -o '"download_url":"[^"]*"' | cut -d'"' -f4)
+SHA256=\$(echo "\$VERSION_JSON" | grep -o '"sha256":"[^"]*"' | cut -d'"' -f4)
+VERSION=\$(echo "\$VERSION_JSON" | grep -o '"version":"[^"]*"' | cut -d'"' -f4)
+
+if [ -z "\$DOWNLOAD_URL" ]; then
+  echo "Error: could not parse version info from server."
+  exit 1
+fi
+
+echo "Downloading fileshare \${VERSION}..."
+TMP=\$(mktemp)
+curl -fsSL -o "\$TMP" "\$DOWNLOAD_URL"
+
+echo "Verifying checksum..."
+if command -v sha256sum >/dev/null 2>&1; then
+  ACTUAL=\$(sha256sum "\$TMP" | awk '{print \$1}')
+else
+  ACTUAL=\$(shasum -a 256 "\$TMP" | awk '{print \$1}')
+fi
+
+if [ "\$ACTUAL" != "\$SHA256" ]; then
+  echo "Checksum mismatch! Expected: \$SHA256"
+  echo "Got:      \$ACTUAL"
+  rm -f "\$TMP"
+  exit 1
+fi
+
+mkdir -p "\$INSTALL_DIR"
+mv "\$TMP" "\$INSTALL_DIR/fileshare"
+chmod +x "\$INSTALL_DIR/fileshare"
+
+echo ""
+echo "✓ Installed fileshare \${VERSION} to \${INSTALL_DIR}/fileshare"
+
+case ":\$PATH:" in
+  *":\$INSTALL_DIR:"*) ;;
+  *)
+    echo ""
+    echo "  \$INSTALL_DIR is not in your PATH."
+    echo "  Add this to your shell profile:"
+    echo "    export PATH=\"\$INSTALL_DIR:\\\$PATH\""
+    ;;
+esac
+`;
+  return new Response(script, {
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+  });
+}
+
+export async function handleInstallPs1(_req: Request): Promise<Response> {
+  const serverUrl = process.env.SERVER_URL || `http://localhost:${process.env.PORT || 3000}`;
+  const script = `$ErrorActionPreference = 'Stop'
+$ServerUrl = "${serverUrl}"
+$InstallDir = "$env:LOCALAPPDATA\\Programs\\fileshare"
+$Platform = "windows-x64"
+
+Write-Host "Fetching latest version for $Platform..."
+$info = Invoke-RestMethod -Uri "$ServerUrl/api/version?platform=$Platform"
+
+Write-Host "Downloading fileshare $($info.version)..."
+$tmp = [System.IO.Path]::GetTempFileName() + ".exe"
+Invoke-WebRequest -Uri $info.download_url -OutFile $tmp
+
+Write-Host "Verifying checksum..."
+$hash = (Get-FileHash -Path $tmp -Algorithm SHA256).Hash.ToLower()
+if ($hash -ne $info.sha256) {
+    Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+    throw "Checksum mismatch! Expected: $($info.sha256)\`nGot: $hash"
+}
+
+New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
+Move-Item -Force $tmp "$InstallDir\\fileshare.exe"
+
+$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+if ($userPath -notlike "*$InstallDir*") {
+    [Environment]::SetEnvironmentVariable("Path", "$userPath;$InstallDir", "User")
+    Write-Host ""
+    Write-Host "  Added $InstallDir to your PATH."
+    Write-Host "  Restart your terminal for the change to take effect."
+}
+
+Write-Host ""
+Write-Host "v Installed fileshare $($info.version) to $InstallDir\\fileshare.exe"
+`;
+  return new Response(script, {
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+  });
+}
+
 export async function handleListVersions(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const platform = url.searchParams.get('platform');

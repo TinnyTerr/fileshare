@@ -14,8 +14,8 @@ export interface Config {
 }
 
 const DEFAULTS: Config = {
-  server: 'http://localhost:3000',
-  client_version: '0.0.0',
+  server: process.env.BAKED_SERVER || 'http://localhost:3000',
+  client_version: process.env.BAKED_VERSION || '0.0.0',
 };
 
 let _config: Config | null = null;
