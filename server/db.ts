@@ -155,6 +155,9 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_client_logs_ts      ON client_logs(created_at);
 `);
 
+// Migrate legacy 'enterprise' tier (renamed to 'full')
+db.exec("UPDATE users SET subscription_tier = 'full' WHERE subscription_tier = 'enterprise'");
+
 export type Row = Record<string, unknown>;
 
 // Ensure the user is a member of the "Admins" system group.

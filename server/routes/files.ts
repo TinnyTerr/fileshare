@@ -151,7 +151,7 @@ export async function handleInitUpload(req: Request): Promise<Response> {
 	const limits =
 		SUBSCRIPTION_LIMITS[
 			user.subscription_tier as keyof typeof SUBSCRIPTION_LIMITS
-		];
+		] ?? SUBSCRIPTION_LIMITS.free;
 
 	if (user.storage_used + size > limits.storage) {
 		return json(
