@@ -1,13 +1,13 @@
 {
-  "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "types": ["bun-types"],
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "skipLibCheck": true
-  },
-  "include": ["**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+	"compilerOptions": {
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"types": ["bun-types"],
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"skipLibCheck": true
+	},
+	"include": ["**/*.ts"],
+	"exclude": ["node_modules", "dist"]
 }

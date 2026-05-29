@@ -1,14 +1,14 @@
-import { Database } from 'bun:sqlite';
-import { mkdirSync } from 'fs';
-import { dirname } from 'path';
+import { Database } from "bun:sqlite";
+import { mkdirSync } from "fs";
+import { dirname } from "path";
 
-const dbPath = process.env.DB_PATH || './data/fileshare.db';
+const dbPath = process.env.DB_PATH || "./data/fileshare.db";
 mkdirSync(dirname(dbPath), { recursive: true });
 
 export const db = new Database(dbPath, { create: true });
 
-db.exec('PRAGMA journal_mode = WAL;');
-db.exec('PRAGMA foreign_keys = ON;');
+db.exec("PRAGMA journal_mode = WAL;");
+db.exec("PRAGMA foreign_keys = ON;");
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
