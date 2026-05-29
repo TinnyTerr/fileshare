@@ -1,14 +1,14 @@
 import { db } from "./db";
 
 type CreateUserInput = {
-	email: string;
+	username: string;
 	password: string;
 	role?: string;
 	subscriptionTier?: string;
 };
 
 export async function createUser({
-	email,
+	username,
 	password,
 	role = "user",
 	subscriptionTier = "free",
@@ -28,7 +28,7 @@ export async function createUser({
     RETURNING *
   `);
 
-	const user = query.get(email, passwordHash, role, subscriptionTier);
+	const user = query.get(username, passwordHash, role, subscriptionTier);
 
 	return user;
 }
