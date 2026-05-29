@@ -139,4 +139,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_share_links_file    ON share_links(file_id);
 `);
 
+// Migrate legacy 'enterprise' tier (renamed to 'full')
+db.exec("UPDATE users SET subscription_tier = 'full' WHERE subscription_tier = 'enterprise'");
+
 export type Row = Record<string, unknown>;
