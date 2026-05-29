@@ -25,7 +25,7 @@ afterAll(() => {
   rmSync('./data/test-auth-tmp',      { recursive: true, force: true });
 });
 
-const email = `test_auth_${Date.now()}@example.com`;
+const username = `test_auth_${Date.now()}`;
 const password = 'password123';
 let accessToken = '';
 let refreshToken = '';
@@ -35,11 +35,11 @@ describe('Auth', () => {
     const res = await fetch(`${BASE}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     });
     expect(res.status).toBe(201);
     const data = await res.json() as any;
-    expect(data.user.email).toBe(email);
+    expect(data.user.username).toBe(username);
     expect(data.access_token).toBeString();
     expect(data.refresh_token).toBeString();
     accessToken = data.access_token;
@@ -50,7 +50,7 @@ describe('Auth', () => {
     const res = await fetch(`${BASE}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     });
     expect(res.status).toBe(409);
   });
@@ -59,7 +59,7 @@ describe('Auth', () => {
     const res = await fetch(`${BASE}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     });
     expect(res.status).toBe(200);
     const data = await res.json() as any;
@@ -72,7 +72,7 @@ describe('Auth', () => {
     const res = await fetch(`${BASE}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password: 'wrong' }),
+      body: JSON.stringify({ username, password: 'wrong' }),
     });
     expect(res.status).toBe(401);
   });
@@ -83,7 +83,7 @@ describe('Auth', () => {
     });
     expect(res.status).toBe(200);
     const user = await res.json() as any;
-    expect(user.email).toBe(email);
+    expect(user.username).toBe(username);
   });
 
   it('refreshes tokens', async () => {

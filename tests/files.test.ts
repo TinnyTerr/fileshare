@@ -13,7 +13,7 @@ let server: ReturnType<typeof Bun.serve>;
 let accessToken = '';
 let fileId = '';
 
-const email    = `files_${Date.now()}@example.com`;
+const username    = `files_${Date.now()}`;
 const password = 'password123';
 
 beforeAll(async () => {
@@ -25,7 +25,7 @@ beforeAll(async () => {
   const res = await fetch(`${BASE}/api/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ username, password }),
   });
   const data = await res.json() as any;
   accessToken = data.access_token;
@@ -132,18 +132,18 @@ describe('File upload/download', () => {
   });
 
   it('shares file read-only with another user', async () => {
-    const email2 = `share2_${Date.now()}@example.com`;
+    const username2 = `share2_${Date.now()}@example.com`;
     const reg = await fetch(`${BASE}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email2, password }),
+      body: JSON.stringify({ username: username2, password }),
     });
     const { access_token: tok2 } = await reg.json() as any;
 
     await fetch(`${BASE}/api/files/${fileId}/share`, {
       method: 'POST',
       headers: { ...auth(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email2 }),
+      body: JSON.stringify({ username: username2 }),
     });
 
     const dlRes = await fetch(`${BASE}/api/files/${fileId}/data`, {
