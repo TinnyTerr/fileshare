@@ -399,7 +399,22 @@ export async function uploadFile(
 				`[verbose] uploading chunk ${chunkIndex} bytes ${offset}-${chunkEnd - 1}/${size}`,
 			);
 
-		await api.files.uploadChunk(file_id, buf, offset, size);
+		const MAX_RETRIES = 3;
+		for (let attempt = 1; ; attempt++) {
+			try {
+				await api.files.uploadChunk(file_id, buf, offset, size);
+				break;
+			} catch (err: any) {
+				if (attempt > MAX_RETRIES) throw err;
+				const delay = 1000 * attempt;
+				if (verbose)
+					console.error(
+						`[verbose] chunk ${chunkIndex} failed (attempt ${attempt}/${MAX_RETRIES}), retrying in ${delay}ms: ${err.message}`,
+					);
+				await new Promise((r) => setTimeout(r, delay));
+			}
+		}
+
 		offset = chunkEnd;
 		chunkIndex++;
 		options.onProgress?.(Math.round((offset / size) * 100));

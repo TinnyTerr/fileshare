@@ -94,10 +94,8 @@ async function assembleAndEncrypt(
 	const dir = fileDir(fileId);
 	mkdirSync(dir, { recursive: true });
 
-	const { openSync, writeSync, closeSync, readFileSync, rmSync } = await import(
-		"fs"
-	);
-	const fd = openSync(filePath(fileId), "w");
+	const { open, readFile, rm } = await import("fs/promises");
+	const fh = await open(filePath(fileId), "w");
 
 	const insertChunk = db.prepare(
 		"INSERT INTO file_chunks (file_id, chunk_index, cleartext_start, cleartext_size, encrypted_offset) VALUES (?, ?, ?, ?, ?)",
@@ -107,26 +105,29 @@ async function assembleAndEncrypt(
 	let encryptedOffset = 0;
 	let chunkIndex = 0;
 
-	while (cleartextOffset < totalSize) {
-		const data = readFileSync(chunkPath(fileId, cleartextOffset));
-		const encrypted = encryptChunk(data, fileKey);
-		writeSync(fd, encrypted);
+	try {
+		while (cleartextOffset < totalSize) {
+			const data = await readFile(chunkPath(fileId, cleartextOffset));
+			const encrypted = encryptChunk(data, fileKey);
+			await fh.write(encrypted);
 
-		insertChunk.run(
-			fileId,
-			chunkIndex,
-			cleartextOffset,
-			data.length,
-			encryptedOffset,
-		);
+			insertChunk.run(
+				fileId,
+				chunkIndex,
+				cleartextOffset,
+				data.length,
+				encryptedOffset,
+			);
 
-		encryptedOffset += encrypted.length;
-		cleartextOffset += data.length;
-		chunkIndex++;
+			encryptedOffset += encrypted.length;
+			cleartextOffset += data.length;
+			chunkIndex++;
+		}
+	} finally {
+		await fh.close();
 	}
 
-	closeSync(fd);
-	rmSync(tmpDir(fileId), { recursive: true, force: true });
+	await rm(tmpDir(fileId), { recursive: true, force: true });
 }
 
 export async function handleInitUpload(req: Request): Promise<Response> {
@@ -227,7 +228,12 @@ export async function handleUploadChunk(
 	}
 	if (total !== file.size) return json({ error: "Total size mismatch" }, 400);
 
-	const body = await req.arrayBuffer();
+	let body: ArrayBuffer;
+	try {
+		body = await req.arrayBuffer();
+	} catch {
+		return json({ error: "Upload connection interrupted" }, 400);
+	}
 	if (body.byteLength !== chunkSize)
 		return json({ error: "Body size does not match Content-Range" }, 400);
 
