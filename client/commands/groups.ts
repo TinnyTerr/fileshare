@@ -35,7 +35,7 @@ export async function cmdGroupInfo(args: string[]): Promise<void> {
     console.log(`Created: ${g.created_at}`);
     console.log(`Members (${g.members.length}):`);
     for (const m of g.members) {
-      console.log(`  ${m.email.padEnd(32)} ${m.role}`);
+      console.log(`  ${m.username.padEnd(32)} ${m.role}`);
     }
   } catch (err: any) {
     console.error(`Failed: ${err.message}`); process.exit(1);
@@ -44,17 +44,17 @@ export async function cmdGroupInfo(args: string[]): Promise<void> {
 
 export async function cmdGroupAddMember(args: string[]): Promise<void> {
   const groupId = args[0];
-  const emailIdx = args.indexOf('--user');
-  const email = emailIdx >= 0 ? args[emailIdx + 1] : args[1];
-  if (!groupId || !email) {
-    console.error('Usage: fileshare group add-member <group-id> --user <email> [--role admin|member]');
+  const usernameIdx = args.indexOf('--user');
+  const username = usernameIdx >= 0 ? args[usernameIdx + 1] : args[1];
+  if (!groupId || !username) {
+    console.error('Usage: fileshare group add-member <group-id> --user <username> [--role admin|member]');
     process.exit(1);
   }
   const roleIdx = args.indexOf('--role');
   const role = roleIdx >= 0 ? args[roleIdx + 1] : 'member';
   try {
-    await api.groups.addMember(parseInt(groupId), email, role as any);
-    console.log(`✓ Added ${email} to group ${groupId} as ${role}`);
+    await api.groups.addMember(parseInt(groupId), username, role as any);
+    console.log(`✓ Added ${username} to group ${groupId} as ${role}`);
   } catch (err: any) {
     console.error(`Failed: ${err.message}`); process.exit(1);
   }
@@ -62,14 +62,14 @@ export async function cmdGroupAddMember(args: string[]): Promise<void> {
 
 export async function cmdGroupRemoveMember(args: string[]): Promise<void> {
   const groupId = args[0];
-  const emailIdx = args.indexOf('--user');
-  const email = emailIdx >= 0 ? args[emailIdx + 1] : args[1];
-  if (!groupId || !email) {
-    console.error('Usage: fileshare group remove-member <group-id> --user <email>');
+  const usernameIdx = args.indexOf('--user');
+  const username = usernameIdx >= 0 ? args[usernameIdx + 1] : args[1];
+  if (!groupId || !username) {
+    console.error('Usage: fileshare group remove-member <group-id> --user <username>');
     process.exit(1);
   }
   try {
-    const user = await api.admin.getUser(parseInt(groupId)) as any; // won't work - need email lookup
+    const user = await api.admin.getUser(parseInt(groupId)) as any; // won't work - need username lookup
     // Look up user id via a separate call
     console.error('Use: fileshare group remove-member <group-id> --user-id <id>');
     process.exit(1);

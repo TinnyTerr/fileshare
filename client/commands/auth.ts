@@ -49,26 +49,26 @@ async function promptPassword(msg: string): Promise<string> {
 }
 
 export async function cmdLogin(args: string[]): Promise<void> {
-  let email    = args[0];
+  let username    = args[0];
   let password = args[1];
 
-  if (!email)    email    = await promptText('Email: ');
+  if (!username)    username    = await promptText('username: ');
   if (!password) password = await promptPassword('Password: ');
 
   try {
-    const data = await api.auth.login(email, password) as any;
-    saveConfig({ email: data.user.email, access_token: data.access_token, refresh_token: data.refresh_token });
-    console.log(`✓ Logged in as ${data.user.email} (${data.user.subscription_tier})`);
+    const data = await api.auth.login(username, password) as any;
+    saveConfig({ username: data.user.username, access_token: data.access_token, refresh_token: data.refresh_token });
+    console.log(`✓ Logged in as ${data.user.username} (${data.user.subscription_tier})`);
   } catch (err: any) {
     console.error(`Login failed: ${err.message}`); process.exit(1);
   }
 }
 
 export async function cmdRegister(args: string[]): Promise<void> {
-  let email    = args[0];
+  let username    = args[0];
   let password = args[1];
 
-  if (!email)    email    = await promptText('Email: ');
+  if (!username)    username    = await promptText('username: ');
   if (!password) {
     password = await promptPassword('Password: ');
     const confirm = await promptPassword('Confirm password: ');
@@ -78,9 +78,9 @@ export async function cmdRegister(args: string[]): Promise<void> {
   }
 
   try {
-    const data = await api.auth.register(email, password) as any;
-    saveConfig({ email: data.user.email, access_token: data.access_token, refresh_token: data.refresh_token });
-    console.log(`✓ Registered and logged in as ${data.user.email}`);
+    const data = await api.auth.register(username, password) as any;
+    saveConfig({ username: data.user.username, access_token: data.access_token, refresh_token: data.refresh_token });
+    console.log(`✓ Registered and logged in as ${data.user.username}`);
   } catch (err: any) {
     console.error(`Registration failed: ${err.message}`); process.exit(1);
   }
@@ -98,7 +98,7 @@ export async function cmdLogout(): Promise<void> {
 export async function cmdWhoami(): Promise<void> {
   try {
     const user = await api.auth.me() as any;
-    console.log(`Email:        ${user.email}`);
+    console.log(`username:        ${user.username}`);
     console.log(`Role:         ${user.role}`);
     console.log(`Plan:         ${user.subscription_tier}`);
     console.log(`Storage used: ${formatBytes(user.storage_used)}`);

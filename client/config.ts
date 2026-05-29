@@ -9,7 +9,7 @@ export interface Config {
   server: string;
   access_token?: string;
   refresh_token?: string;
-  email?: string;
+  username?: string;
   client_version: string;
 }
 
@@ -42,5 +42,5 @@ export function saveConfig(updates: Partial<Config>): void {
 }
 
 export function clearAuth(): void {
-  saveConfig({ access_token: undefined, refresh_token: undefined, email: undefined });
+  saveConfig({ access_token: undefined, refresh_token: undefined, username: undefined });
 }

@@ -53,7 +53,7 @@ export async function handleGetGroup(req: Request, groupId: string): Promise<Res
   if (!group) return json({ error: 'Group not found' }, 404);
 
   const members = db.query(
-    'SELECT u.id, u.email, gm.role, gm.joined_at FROM group_members gm JOIN users u ON u.id = gm.user_id WHERE gm.group_id = ? ORDER BY gm.role, u.email'
+    'SELECT u.id, u.username, gm.role, gm.joined_at FROM group_members gm JOIN users u ON u.id = gm.user_id WHERE gm.group_id = ? ORDER BY gm.role, u.username'
   ).all(gid);
 
   return json({ ...group, members });
@@ -94,9 +94,9 @@ export async function handleAddMember(req: Request, groupId: string): Promise<Re
   if (!isGroupAdmin(gid, auth.userId) && auth.role !== 'admin') return json({ error: 'Forbidden' }, 403);
 
   const body = await req.json().catch(() => null);
-  if (!body?.email) return json({ error: 'email required' }, 400);
+  if (!body?.username) return json({ error: 'username required' }, 400);
 
-  const target = db.query('SELECT id FROM users WHERE email = ?').get(body.email) as any;
+  const target = db.query('SELECT id FROM users WHERE username = ?').get(body.username) as any;
   if (!target) return json({ error: 'User not found' }, 404);
 
   const role = ['owner', 'admin', 'member'].includes(body.role) ? body.role : 'member';
@@ -104,7 +104,7 @@ export async function handleAddMember(req: Request, groupId: string): Promise<Re
     "INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, ?) ON CONFLICT(group_id, user_id) DO UPDATE SET role = excluded.role"
   ).run(gid, target.id, role);
 
-  return json({ ok: true, email: body.email, role });
+  return json({ ok: true, username: body.username, role });
 }
 
 export async function handleRemoveMember(req: Request, groupId: string, userId: string): Promise<Response> {

@@ -13,7 +13,7 @@ export type Platform = 'linux-x64' | 'linux-arm64' | 'darwin-x64' | 'darwin-arm6
 
 export interface User {
   id: number;
-  email: string;
+  username: string;
   role: UserRole;
   subscription_tier: SubscriptionTier;
   storage_used: number;
@@ -51,7 +51,7 @@ export interface ClientVersion {
 
 export interface TokenPayload {
   userId: number;
-  email: string;
+  username: string;
   role: UserRole;
 }
 

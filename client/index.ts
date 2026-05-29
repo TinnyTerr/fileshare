@@ -14,8 +14,8 @@ fileshare — file sharing CLI  (AES-256-GCM encrypted storage)
 Usage: fileshare <command> [options]
 
 Auth:
-  login [email] [password]          Log in
-  register [email] [password]       Register
+  login [username] [password]          Log in
+  register [username] [password]       Register
   logout                            Log out
   whoami                            Show current user
 
@@ -25,14 +25,14 @@ Files:
   list [--page <n>]                 List your files
   info <id>                         File metadata, shares, links
   delete <id>                       Delete
-  share <id> --user <email>         Share with user [--write]
-  unshare <id> --user <email>       Revoke user access
+  share <id> --user <username>         Share with user [--write]
+  unshare <id> --user <username>       Revoke user access
 
 Groups:
   group create <name>               Create a group
   group list                        List your groups
   group info <id>                   Members and details
-  group add-member <id> --user <email> [--role admin|member]
+  group add-member <id> --user <username> [--role admin|member]
   group remove-member <id> --user-id <uid>
   group invite <id> [--password <pw>] [--expires <days>] [--max-uses <n>]
   group join <token> [--password <pw>]

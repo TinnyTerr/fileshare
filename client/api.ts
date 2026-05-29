@@ -67,10 +67,10 @@ async function request(
 // Auth
 export const api = {
   auth: {
-    register: (email: string, password: string) =>
-      request('POST', '/api/auth/register', { email, password }),
-    login: (email: string, password: string) =>
-      request('POST', '/api/auth/login', { email, password }),
+    register: (username: string, password: string) =>
+      request('POST', '/api/auth/register', { username, password }),
+    login: (username: string, password: string) =>
+      request('POST', '/api/auth/login', { username, password }),
     logout: (refresh_token: string) =>
       request('POST', '/api/auth/logout', { refresh_token }),
     me: () => request('GET', '/api/auth/me'),
@@ -118,11 +118,11 @@ export const api = {
 
     delete: (fileId: string) => request('DELETE', `/api/files/${fileId}`),
 
-    share: (fileId: string, email: string, can_write = false) =>
-      request('POST', `/api/files/${fileId}/share`, { email, can_write }),
+    share: (fileId: string, username: string, can_write = false) =>
+      request('POST', `/api/files/${fileId}/share`, { username, can_write }),
 
-    unshare: (fileId: string, email: string) =>
-      request('DELETE', `/api/files/${fileId}/share`, { email }),
+    unshare: (fileId: string, username: string) =>
+      request('DELETE', `/api/files/${fileId}/share`, { username }),
   },
 
   admin: {
@@ -147,8 +147,8 @@ export const api = {
     get: (id: number) => request('GET', `/api/groups/${id}`),
     update: (id: number, name: string) => request('PUT', `/api/groups/${id}`, { name }),
     delete: (id: number) => request('DELETE', `/api/groups/${id}`),
-    addMember: (id: number, email: string, role = 'member') =>
-      request('POST', `/api/groups/${id}/members`, { email, role }),
+    addMember: (id: number, username: string, role = 'member') =>
+      request('POST', `/api/groups/${id}/members`, { username, role }),
     removeMember: (groupId: number, userId: number) =>
       request('DELETE', `/api/groups/${groupId}/members/${userId}`),
     createInvite: (id: number, opts: { password?: string; expires_days?: number; max_uses?: number }) =>

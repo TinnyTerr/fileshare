@@ -257,7 +257,7 @@ export async function handleGetFileMeta(req: Request, fileId: string): Promise<R
   if (!canRead(fileId, auth.userId, auth.role)) return json({ error: 'Forbidden' }, 403);
 
   const shares = db.query(
-    'SELECT u.email, fs.can_write FROM file_shares fs JOIN users u ON u.id = fs.user_id WHERE fs.file_id = ?'
+    'SELECT u.username, fs.can_write FROM file_shares fs JOIN users u ON u.id = fs.user_id WHERE fs.file_id = ?'
   ).all(fileId);
 
   const groups = db.query(
@@ -332,9 +332,9 @@ export async function handleShareFile(req: Request, fileId: string): Promise<Res
   if (file.owner_id !== auth.userId && auth.role !== 'admin') return json({ error: 'Forbidden' }, 403);
 
   const body = await req.json().catch(() => null);
-  if (!body?.email) return json({ error: 'email required' }, 400);
+  if (!body?.username) return json({ error: 'username required' }, 400);
 
-  const target = db.query('SELECT id FROM users WHERE email = ?').get(body.email) as any;
+  const target = db.query('SELECT id FROM users WHERE username = ?').get(body.username) as any;
   if (!target) return json({ error: 'User not found' }, 404);
   if (target.id === auth.userId) return json({ error: 'Cannot share with yourself' }, 400);
 
@@ -343,7 +343,7 @@ export async function handleShareFile(req: Request, fileId: string): Promise<Res
     'INSERT INTO file_shares (file_id, user_id, can_write) VALUES (?, ?, ?) ON CONFLICT(file_id, user_id) DO UPDATE SET can_write = excluded.can_write'
   ).run(fileId, target.id, canWriteVal);
 
-  return json({ ok: true, shared_with: body.email, can_write: !!canWriteVal });
+  return json({ ok: true, shared_with: body.username, can_write: !!canWriteVal });
 }
 
 export async function handleUnshareFile(req: Request, fileId: string): Promise<Response> {
@@ -355,9 +355,9 @@ export async function handleUnshareFile(req: Request, fileId: string): Promise<R
   if (file.owner_id !== auth.userId && auth.role !== 'admin') return json({ error: 'Forbidden' }, 403);
 
   const body = await req.json().catch(() => null);
-  if (!body?.email) return json({ error: 'email required' }, 400);
+  if (!body?.username) return json({ error: 'username required' }, 400);
 
-  const target = db.query('SELECT id FROM users WHERE email = ?').get(body.email) as any;
+  const target = db.query('SELECT id FROM users WHERE username = ?').get(body.username) as any;
   if (!target) return json({ error: 'User not found' }, 404);
 
   db.query('DELETE FROM file_shares WHERE file_id = ? AND user_id = ?').run(fileId, target.id);

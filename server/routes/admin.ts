@@ -15,7 +15,7 @@ export async function handleListUsers(req: Request): Promise<Response> {
   const offset = (page - 1) * limit;
 
   const users = db.query(
-    'SELECT id, email, role, subscription_tier, storage_used, created_at FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?'
+    'SELECT id, username, role, subscription_tier, storage_used, created_at FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?'
   ).all(limit, offset);
 
   const total = (db.query('SELECT COUNT(*) as c FROM users').get() as any).c;
@@ -29,7 +29,7 @@ export async function handleGetUser(req: Request, userId: string): Promise<Respo
   if (deny) return deny;
 
   const user = db.query(
-    'SELECT id, email, role, subscription_tier, storage_used, created_at FROM users WHERE id = ?'
+    'SELECT id, username, role, subscription_tier, storage_used, created_at FROM users WHERE id = ?'
   ).get(userId) as any;
 
   if (!user) return json({ error: 'User not found' }, 404);

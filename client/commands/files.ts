@@ -125,7 +125,7 @@ export async function cmdInfo(args: string[]): Promise<void> {
     console.log(`Created:  ${f.created_at}`);
     console.log(`Expires:  ${f.expires_at || 'never'}`);
     if (f.shares?.length > 0) {
-      console.log(`Shared:   ${f.shares.map((s: any) => `${s.email} (${s.can_write ? 'rw' : 'ro'})`).join(', ')}`);
+      console.log(`Shared:   ${f.shares.map((s: any) => `${s.username} (${s.can_write ? 'rw' : 'ro'})`).join(', ')}`);
     }
   } catch (err: any) {
     console.error(`Failed: ${err.message}`);
@@ -148,19 +148,19 @@ export async function cmdDelete(args: string[]): Promise<void> {
 
 export async function cmdShare(args: string[]): Promise<void> {
   const fileId = args[0];
-  const emailIdx = args.indexOf('--user');
-  const email = emailIdx >= 0 ? args[emailIdx + 1] : undefined;
+  const usernameIdx = args.indexOf('--user');
+  const username = usernameIdx >= 0 ? args[usernameIdx + 1] : undefined;
 
-  if (!fileId || !email) {
-    console.error('Usage: fileshare share <file-id> --user <email> [--write]');
+  if (!fileId || !username) {
+    console.error('Usage: fileshare share <file-id> --user <username> [--write]');
     process.exit(1);
   }
 
   const canWrite = args.includes('--write');
 
   try {
-    await api.files.share(fileId, email, canWrite);
-    console.log(`✓ Shared ${fileId} with ${email} (${canWrite ? 'read-write' : 'read-only'})`);
+    await api.files.share(fileId, username, canWrite);
+    console.log(`✓ Shared ${fileId} with ${username} (${canWrite ? 'read-write' : 'read-only'})`);
   } catch (err: any) {
     console.error(`Share failed: ${err.message}`);
     process.exit(1);
@@ -169,17 +169,17 @@ export async function cmdShare(args: string[]): Promise<void> {
 
 export async function cmdUnshare(args: string[]): Promise<void> {
   const fileId = args[0];
-  const emailIdx = args.indexOf('--user');
-  const email = emailIdx >= 0 ? args[emailIdx + 1] : undefined;
+  const usernameIdx = args.indexOf('--user');
+  const username = usernameIdx >= 0 ? args[usernameIdx + 1] : undefined;
 
-  if (!fileId || !email) {
-    console.error('Usage: fileshare unshare <file-id> --user <email>');
+  if (!fileId || !username) {
+    console.error('Usage: fileshare unshare <file-id> --user <username>');
     process.exit(1);
   }
 
   try {
-    await api.files.unshare(fileId, email);
-    console.log(`✓ Removed ${email}'s access to ${fileId}`);
+    await api.files.unshare(fileId, username);
+    console.log(`✓ Removed ${username}'s access to ${fileId}`);
   } catch (err: any) {
     console.error(`Unshare failed: ${err.message}`);
     process.exit(1);
