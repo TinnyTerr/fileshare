@@ -129,6 +129,20 @@ db.exec(`
     UNIQUE(version, platform)
   );
 
+  CREATE TABLE IF NOT EXISTS client_logs (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id        INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    username       TEXT NOT NULL DEFAULT '',
+    ts             TEXT NOT NULL,
+    method         TEXT NOT NULL,
+    path           TEXT NOT NULL,
+    status         INTEGER,
+    duration_ms    INTEGER,
+    error          TEXT,
+    client_version TEXT,
+    created_at     TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_files_owner         ON files(owner_id);
   CREATE INDEX IF NOT EXISTS idx_file_shares_user    ON file_shares(user_id);
   CREATE INDEX IF NOT EXISTS idx_file_chunks_file    ON file_chunks(file_id, chunk_index);
@@ -137,9 +151,40 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_group_members_user  ON group_members(user_id);
   CREATE INDEX IF NOT EXISTS idx_file_group_shares   ON file_group_shares(file_id);
   CREATE INDEX IF NOT EXISTS idx_share_links_file    ON share_links(file_id);
+  CREATE INDEX IF NOT EXISTS idx_client_logs_user    ON client_logs(user_id);
+  CREATE INDEX IF NOT EXISTS idx_client_logs_ts      ON client_logs(created_at);
 `);
 
 // Migrate legacy 'enterprise' tier (renamed to 'full')
 db.exec("UPDATE users SET subscription_tier = 'full' WHERE subscription_tier = 'enterprise'");
 
 export type Row = Record<string, unknown>;
+
+// Ensure the user is a member of the "Admins" system group.
+// Creates the group if it doesn't exist yet (owned by the given userId).
+export function ensureAdminGroupMembership(userId: number): void {
+	let group = db
+		.query("SELECT id FROM groups WHERE name = 'Admins' LIMIT 1")
+		.get() as any;
+	if (!group) {
+		group = db
+			.query(
+				"INSERT INTO groups (name, owner_id) VALUES ('Admins', ?) RETURNING id",
+			)
+			.get(userId) as any;
+	}
+	db.query(
+		"INSERT OR IGNORE INTO group_members (group_id, user_id, role) VALUES (?, ?, 'admin')",
+	).run(group.id, userId);
+}
+
+export function removeAdminGroupMembership(userId: number): void {
+	const group = db
+		.query("SELECT id FROM groups WHERE name = 'Admins' LIMIT 1")
+		.get() as any;
+	if (group) {
+		db.query(
+			"DELETE FROM group_members WHERE group_id = ? AND user_id = ?",
+		).run(group.id, userId);
+	}
+}

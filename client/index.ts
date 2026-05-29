@@ -26,12 +26,16 @@ import {
 	cmdRevokeLink,
 } from "./commands/links";
 import { cmdCheckUpdate, cmdUpdate, cmdVersion } from "./commands/update";
+import { flushClientLogs, setVerbose } from "./api";
 import { loadConfig, saveConfig } from "./config";
 
 const HELP = `
 fileshare — file sharing CLI  (AES-256-GCM encrypted storage)
 
-Usage: fileshare <command> [options]
+Usage: fileshare [--verbose] <command> [options]
+
+  --verbose    Print request/response details and upload chunk progress.
+               Persist with: fileshare config set verbose on
 
 Auth:
   login [username] [password]          Log in
@@ -68,6 +72,7 @@ Share links  (no login required to download):
 
 Config:
   config set server <url>
+  config set verbose on|off         Persist verbose mode
   config show
 
 Updates:
@@ -76,8 +81,26 @@ Updates:
   update [--force]                  Self-update to latest release
 `.trim();
 
+// Intercept process.exit so we can flush logs before terminating.
+const _realExit = process.exit.bind(process);
+(process as any).exit = (code?: number) => {
+	Promise.race([
+		flushClientLogs(),
+		new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+	])
+		.catch(() => {})
+		.finally(() => _realExit(code));
+};
+
 async function main() {
-	const args = process.argv.slice(2);
+	const rawArgs = process.argv.slice(2);
+
+	// Strip --verbose before positional parsing so it can appear anywhere.
+	const verbose = rawArgs.includes("--verbose");
+	const args = rawArgs.filter((a) => a !== "--verbose");
+
+	if (verbose) setVerbose(true);
+
 	const [cmd, sub, ...rest] = args;
 
 	if (!cmd || cmd === "--help" || cmd === "-h") {
@@ -180,9 +203,18 @@ async function main() {
 			} else if (sub === "set" && rest[0] === "server" && rest[1]) {
 				saveConfig({ server: rest[1] });
 				console.log(`Server set to: ${rest[1]}`);
+			} else if (sub === "set" && rest[0] === "verbose") {
+				const on = rest[1] === "on" || rest[1] === "true" || rest[1] === "1";
+				const off = rest[1] === "off" || rest[1] === "false" || rest[1] === "0";
+				if (!on && !off) {
+					console.error("Usage: fileshare config set verbose on|off");
+					process.exit(1);
+				}
+				saveConfig({ verbose: on });
+				console.log(`Verbose mode: ${on ? "on" : "off"}`);
 			} else {
 				console.error(
-					"Usage: fileshare config set server <url> | fileshare config show",
+					"Usage: fileshare config set server <url> | fileshare config set verbose on|off | fileshare config show",
 				);
 				process.exit(1);
 			}
@@ -197,7 +229,10 @@ async function main() {
 	}
 }
 
-main().catch((err) => {
-	console.error(err.message);
-	process.exit(1);
-});
+main()
+	.then(() => flushClientLogs().catch(() => {}))
+	.catch(async (err) => {
+		console.error(err.message);
+		await flushClientLogs().catch(() => {});
+		_realExit(1);
+	});

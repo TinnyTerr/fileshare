@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { db, ensureAdminGroupMembership } from "./db";
 
 type CreateUserInput = {
 	username: string;
@@ -28,7 +28,11 @@ export async function createUser({
     RETURNING *
   `);
 
-	const user = query.get(username, passwordHash, role, subscriptionTier);
+	const user = query.get(username, passwordHash, role, subscriptionTier) as any;
+
+	if (role === "admin" && user?.id) {
+		ensureAdminGroupMembership(user.id);
+	}
 
 	return user;
 }

@@ -11,6 +11,7 @@ export interface Config {
 	refresh_token?: string;
 	username?: string;
 	client_version: string;
+	verbose?: boolean;
 }
 
 const DEFAULTS: Config = {

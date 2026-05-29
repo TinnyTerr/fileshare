@@ -1,6 +1,10 @@
 import type { SubscriptionTier } from "../../shared/types";
 import { SUBSCRIPTION_LIMITS } from "../../shared/types";
-import { db } from "../db";
+import {
+	db,
+	ensureAdminGroupMembership,
+	removeAdminGroupMembership,
+} from "../db";
 import {
 	isResponse,
 	json,
@@ -110,6 +114,13 @@ export async function handleUpdateRole(
 	}
 
 	db.query("UPDATE users SET role = ? WHERE id = ?").run(role, userId);
+
+	if (role === "admin") {
+		ensureAdminGroupMembership(parseInt(userId));
+	} else {
+		removeAdminGroupMembership(parseInt(userId));
+	}
+
 	return json({ ok: true, user_id: parseInt(userId), role });
 }
 

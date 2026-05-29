@@ -6,6 +6,7 @@ import {
 	handleUpdateRole,
 	handleUpdateSubscription,
 } from "./routes/admin";
+import { handleGetLogs, handleIngestLogs } from "./routes/logs";
 import {
 	handleLogin,
 	handleLogout,
@@ -127,6 +128,10 @@ async function route(
 			return handleRevokeLink(req, fileId, linkMatch[1]!);
 	}
 
+	// Client logs
+	if (method === "POST" && path === "/api/logs") return handleIngestLogs(req);
+	if (method === "GET" && path === "/api/admin/logs") return handleGetLogs(req);
+
 	// Admin
 	if (method === "GET" && path === "/api/admin/users")
 		return handleListUsers(req);
@@ -226,6 +231,7 @@ export function createServer(port: number): ReturnType<typeof Bun.serve> {
 
 			const url = new URL(req.url);
 			const path = url.pathname.replace(/\/+$/, "") || "/";
+			const start = Date.now();
 
 			let res: Response;
 			try {
@@ -236,6 +242,14 @@ export function createServer(port: number): ReturnType<typeof Bun.serve> {
 					status: 500,
 					headers: { "Content-Type": "application/json" },
 				});
+			}
+
+			const ms = Date.now() - start;
+			// Skip logging /api/logs ingestion to avoid noise
+			if (path !== "/api/logs") {
+				console.log(
+					`[${new Date().toISOString()}] ${req.method} ${path} ${res.status} ${ms}ms`,
+				);
 			}
 
 			return cors(res);
