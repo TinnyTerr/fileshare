@@ -23,7 +23,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Type check
-        run: bun tsc --noEmit
+        run: bunx tsc --noEmit
 
       - name: Run tests
         run: bun test tests/
