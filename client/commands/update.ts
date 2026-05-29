@@ -130,10 +130,7 @@ async function replaceOnWindows(
 	await Bun.write(batPath, batContent);
 
 	const { spawn } = await import("child_process");
-	spawn("cmd", ["/c", "start", "", "/min", batPath], {
-		detached: true,
-		stdio: "ignore",
-	}).unref();
+	spawn("cmd", ["/c", batPath], { detached: true, stdio: "ignore", windowsHide: true }).unref();
 
 	saveConfig({ client_version: newVersion });
 	console.log(

@@ -85,8 +85,10 @@ async function main() {
 		return;
 	}
 
-	// Silent update check on every run
-	cmdCheckUpdate(true).catch(() => {});
+	// Silent update check on every run (skip when the command already handles updates)
+	if (cmd !== "check-update" && cmd !== "update") {
+		cmdCheckUpdate(true).catch(() => {});
+	}
 
 	switch (cmd) {
 		case "login":
