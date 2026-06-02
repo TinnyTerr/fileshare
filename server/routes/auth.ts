@@ -7,6 +7,8 @@ import {
 import { db } from "../db";
 import { isResponse, json, requireAuth } from "../middleware/auth";
 
+const debug = process.env.DEBUG ? console.log.bind(console, "[debug]") : () => {};
+
 export async function handleRegister(req: Request): Promise<Response> {
 	const body = await req.json().catch(() => null);
 	if (!body?.username || !body?.password) {
@@ -39,6 +41,7 @@ export async function handleRegister(req: Request): Promise<Response> {
 		"INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)",
 	).run(result.id, refresh, refreshTokenExpiry());
 
+	debug(`register username=${username} userId=${result.id}`);
 	return json(
 		{ user: result, access_token: accessToken, refresh_token: refresh },
 		201,
@@ -55,10 +58,8 @@ export async function handleLogin(req: Request): Promise<Response> {
 		.query("SELECT * FROM users WHERE username = ?")
 		.get(body.username) as any;
 
-	if (
-		!user ||
-		!(await Bun.password.verify(body.password, user.password_hash))
-	) {
+	if (!user || !(await Bun.password.verify(body.password, user.password_hash))) {
+		debug(`login:fail username=${body.username}`);
 		return json({ error: "Invalid credentials" }, 401);
 	}
 
@@ -72,6 +73,7 @@ export async function handleLogin(req: Request): Promise<Response> {
 		"INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)",
 	).run(user.id, refresh, refreshTokenExpiry());
 
+	debug(`login:ok username=${user.username} userId=${user.id}`);
 	const { password_hash: _, ...safeUser } = user;
 	return json({
 		user: safeUser,
@@ -112,6 +114,7 @@ export async function handleRefresh(req: Request): Promise<Response> {
 		username: user.username,
 		role: user.role,
 	});
+	debug(`token:refresh userId=${user.id} username=${user.username}`);
 	return json({ access_token: accessToken, refresh_token: newRefresh });
 }
 

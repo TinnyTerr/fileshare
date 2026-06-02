@@ -7,6 +7,8 @@ import { db } from "../db";
 import { isResponse, json, requireAuth } from "../middleware/auth";
 import { serveFile } from "./files";
 
+const debug = process.env.DEBUG ? console.log.bind(console, "[debug]") : () => {};
+
 export async function handleCreateLink(
 	req: Request,
 	fileId: string,
@@ -65,6 +67,7 @@ export async function handleCreateLink(
 
 	const serverUrl =
 		process.env.SERVER_URL || `http://localhost:${process.env.PORT || 3000}`;
+	debug(`link:create id=${id} fileId=${fileId} userId=${auth.userId} password=${!!password} expires=${expiresAt} maxDownloads=${max_downloads ?? "unlimited"}`);
 	return json(
 		{
 			id,
@@ -199,6 +202,7 @@ export async function handleDownloadViaLink(
 				password,
 			);
 		} catch {
+			debug(`link:wrong-password id=${linkId}`);
 			return json({ error: "Wrong password" }, 401);
 		}
 	}
@@ -207,6 +211,7 @@ export async function handleDownloadViaLink(
 	db.query("UPDATE share_links SET downloads = downloads + 1 WHERE id = ?").run(
 		linkId,
 	);
+	debug(`link:download id=${linkId} fileId=${link.file_id} passwordProtected=${!!link.pass_salt} downloads=${link.downloads + 1}`);
 
 	// Serve using the files module (pass overrideFileKey to bypass auth check)
 	return serveFile(req, link.file_id, 0, "anonymous", overrideFileKey);

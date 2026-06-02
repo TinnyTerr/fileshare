@@ -1,6 +1,8 @@
 import { existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { CHUNK_SIZE, SUBSCRIPTION_LIMITS } from "../../shared/types";
+
+const debug = process.env.DEBUG ? console.log.bind(console, "[debug]") : () => {};
 import {
 	CHUNK_HEADER_SIZE,
 	decryptChunk,
@@ -105,6 +107,7 @@ async function assembleAndEncrypt(
 	let encryptedOffset = 0;
 	let chunkIndex = 0;
 
+	debug(`assemble:start fileId=${fileId} totalSize=${totalSize}`);
 	try {
 		while (cleartextOffset < totalSize) {
 			const data = await readFile(chunkPath(fileId, cleartextOffset));
@@ -119,6 +122,7 @@ async function assembleAndEncrypt(
 				encryptedOffset,
 			);
 
+			debug(`assemble:chunk fileId=${fileId} index=${chunkIndex} offset=${cleartextOffset} size=${data.length}`);
 			encryptedOffset += encrypted.length;
 			cleartextOffset += data.length;
 			chunkIndex++;
@@ -128,6 +132,7 @@ async function assembleAndEncrypt(
 	}
 
 	await rm(tmpDir(fileId), { recursive: true, force: true });
+	debug(`assemble:done fileId=${fileId} chunks=${chunkIndex}`);
 }
 
 export async function handleInitUpload(req: Request): Promise<Response> {
@@ -183,6 +188,7 @@ export async function handleInitUpload(req: Request): Promise<Response> {
 	);
 
 	mkdirSync(tmpDir(fileId), { recursive: true });
+	debug(`upload:init fileId=${fileId} filename="${filename}" size=${size} userId=${auth.userId}${expiresAt ? ` expires=${expiresAt}` : ""}`);
 
 	return json({ file_id: fileId, chunk_size: CHUNK_SIZE }, 201);
 }
@@ -244,6 +250,7 @@ export async function handleUploadChunk(
 		newBytesReceived,
 		fileId,
 	);
+	debug(`upload:chunk fileId=${fileId} range=${start}-${end}/${total} received=${newBytesReceived}`);
 
 	if (newBytesReceived >= file.size) {
 		const fileKey = unwrapKey(file.key_wrapped, file.key_iv, file.key_tag);
@@ -261,6 +268,7 @@ export async function handleUploadChunk(
 				"SELECT id, filename, size, mime_type, status, created_at, expires_at FROM files WHERE id = ?",
 			)
 			.get(fileId);
+		debug(`upload:complete fileId=${fileId} size=${file.size}`);
 		return json({ complete: true, file: complete });
 	}
 
@@ -341,6 +349,7 @@ export async function serveFile(
 		});
 	}
 
+	debug(`download fileId=${fileId} userId=${userId} range=${reqStart}-${reqEnd}/${totalSize}`);
 	// Find which encrypted chunks cover [reqStart, reqEnd]
 	const chunks = db
 		.query(`
@@ -350,6 +359,7 @@ export async function serveFile(
   `)
 		.all(fileId, reqEnd + 1, reqStart) as any[];
 
+	debug(`download:chunks fileId=${fileId} covering=${chunks.length} encrypted chunks`);
 	const encFile = Bun.file(path);
 	const parts: Buffer[] = [];
 
@@ -482,6 +492,7 @@ export async function handleDeleteFile(
 	if (file.owner_id !== auth.userId && auth.role !== "admin")
 		return json({ error: "Forbidden" }, 403);
 
+	debug(`delete fileId=${fileId} userId=${auth.userId} status=${file.status} size=${file.size}`);
 	db.query("DELETE FROM files WHERE id = ?").run(fileId);
 
 	if (file.status === "complete") {

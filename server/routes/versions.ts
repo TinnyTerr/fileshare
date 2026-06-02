@@ -4,6 +4,8 @@ import type { Platform } from "../../shared/types";
 import { db } from "../db";
 import { json, requireDeployKey } from "../middleware/auth";
 
+const debug = process.env.DEBUG ? console.log.bind(console, "[debug]") : () => {};
+
 const CLIENTS_DIR = join(
 	process.env.UPLOAD_DIR || "./data/files",
 	"../clients",
@@ -117,6 +119,7 @@ export async function handleDownloadClient(
 	const file = Bun.file(filePath);
 	if (!(await file.exists()))
 		return json({ error: "Binary not found on server" }, 404);
+	debug(`version:download platform=${platform} version=${version} compression=${chosen.compression} filename=${chosen.filename}`);
 
 	const ext = platform.startsWith("windows") ? ".exe" : "";
 	const headers: Record<string, string> = {
@@ -187,6 +190,7 @@ export async function handlePublishVersion(req: Request): Promise<Response> {
 	const filename = `fileshare-${platform}-${version}${ext}${compExt}`;
 	const destPath = join(platformDir, filename);
 
+	debug(`version:publish start version=${version} platform=${platform} compression=${compression} size=${file.size}`);
 	await Bun.write(destPath, await file.arrayBuffer());
 
 	// Verify sha256 against the raw binary (only verifiable for raw uploads)
@@ -196,10 +200,12 @@ export async function handlePublishVersion(req: Request): Promise<Response> {
 		const actualHash = Buffer.from(buf).toString("hex");
 
 		if (actualHash !== sha256) {
+			debug(`version:publish sha256-mismatch version=${version} platform=${platform} expected=${sha256} got=${actualHash}`);
 			const { rmSync } = await import("fs");
 			rmSync(destPath, { force: true });
 			return json({ error: "SHA256 mismatch — upload rejected" }, 400);
 		}
+		debug(`version:publish sha256-ok version=${version} platform=${platform}`);
 	}
 
 	// Mark all other versions for this platform as not latest
@@ -211,6 +217,7 @@ export async function handlePublishVersion(req: Request): Promise<Response> {
 		"INSERT INTO client_versions (version, platform, compression, filename, sha256, is_latest) VALUES (?, ?, ?, ?, ?, 1) ON CONFLICT(version, platform, compression) DO UPDATE SET filename = excluded.filename, sha256 = excluded.sha256, is_latest = 1",
 	).run(version, platform, compression, filename, sha256);
 
+	debug(`version:publish done version=${version} platform=${platform} compression=${compression} filename=${filename}`);
 	console.log(`[version] Published ${version} for ${platform} (${compression})`);
 	return json({ ok: true, version, platform, compression, filename, sha256 }, 201);
 }
