@@ -119,14 +119,15 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS client_versions (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    version    TEXT NOT NULL,
-    platform   TEXT NOT NULL,
-    filename   TEXT NOT NULL,
-    sha256     TEXT NOT NULL,
-    is_latest  INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE(version, platform)
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    version     TEXT NOT NULL,
+    platform    TEXT NOT NULL,
+    compression TEXT NOT NULL DEFAULT 'raw',
+    filename    TEXT NOT NULL,
+    sha256      TEXT NOT NULL,
+    is_latest   INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(version, platform, compression)
   );
 
   CREATE TABLE IF NOT EXISTS client_logs (
@@ -157,6 +158,35 @@ db.exec(`
 
 // Migrate legacy 'enterprise' tier (renamed to 'full')
 db.exec("UPDATE users SET subscription_tier = 'full' WHERE subscription_tier = 'enterprise'");
+
+// Migrate client_versions: add compression column if missing
+{
+	const cols = db.query("PRAGMA table_info(client_versions)").all() as any[];
+	if (!cols.find((c: any) => c.name === "compression")) {
+		db.exec("PRAGMA foreign_keys = OFF");
+		db.exec("BEGIN TRANSACTION");
+		db.exec(`
+			CREATE TABLE client_versions_new (
+				id          INTEGER PRIMARY KEY AUTOINCREMENT,
+				version     TEXT NOT NULL,
+				platform    TEXT NOT NULL,
+				compression TEXT NOT NULL DEFAULT 'raw',
+				filename    TEXT NOT NULL,
+				sha256      TEXT NOT NULL,
+				is_latest   INTEGER NOT NULL DEFAULT 0,
+				created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+				UNIQUE(version, platform, compression)
+			)
+		`);
+		db.exec(
+			"INSERT INTO client_versions_new SELECT id, version, platform, 'raw', filename, sha256, is_latest, created_at FROM client_versions",
+		);
+		db.exec("DROP TABLE client_versions");
+		db.exec("ALTER TABLE client_versions_new RENAME TO client_versions");
+		db.exec("COMMIT");
+		db.exec("PRAGMA foreign_keys = ON");
+	}
+}
 
 export type Row = Record<string, unknown>;
 

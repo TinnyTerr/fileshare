@@ -48,6 +48,7 @@ export interface ClientVersion {
 	id: number;
 	version: string;
 	platform: Platform;
+	compression: string;
 	filename: string;
 	sha256: string;
 	is_latest: boolean;

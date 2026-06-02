@@ -64,51 +64,20 @@ jobs:
       - name: Install compression tools
         run: sudo apt-get install -y zstd lz4 p7zip-full
 
-      - name: Compress — compare algorithms, keep smallest
-        id: compress
+      - name: Compress all formats
         run: |
           BINARY="dist/fileshare-${{ matrix.platform }}${{ matrix.ext }}"
+          BASE="dist/release/fileshare-${{ matrix.platform }}${{ matrix.ext }}"
           mkdir -p dist/release
 
-          RAW_SIZE=$(stat -c%s "$BINARY")
-          printf "raw:   %d bytes\n" "$RAW_SIZE"
-          BEST_SIZE=$RAW_SIZE
-          BEST_EXT=""
-
-          # Updates BEST_SIZE/BEST_EXT if the probe file is smaller
-          check() {
-            local ext=$1 probe="/tmp/probe${1}" s
-            s=$(stat -c%s "$probe" 2>/dev/null) || return
-            printf "%-6s %d bytes\n" "${ext}:" "$s"
-            [ "$s" -lt "$BEST_SIZE" ] && { BEST_SIZE=$s; BEST_EXT=$ext; }
-          }
-
-          gzip  -9 -c "$BINARY"                      > /tmp/probe.gz   2>/dev/null || true
-          bzip2 -9 -c "$BINARY"                      > /tmp/probe.bz2  2>/dev/null || true
-          xz    -9 -c "$BINARY"                      > /tmp/probe.xz   2>/dev/null || true
-          zstd  --ultra -22 -q -c "$BINARY"          > /tmp/probe.zst  2>/dev/null || true
-          lz4   -9 -f -q "$BINARY" /tmp/probe.lz4    2>/dev/null || true
-          zip   -9j /tmp/probe.zip "$BINARY"          2>/dev/null || true
-          rm -f /tmp/probe.7z && 7z a /tmp/probe.7z "$BINARY" >/dev/null 2>&1 || true
-
-          echo "=== Compression results ==="
-          check .gz; check .bz2; check .xz; check .zst; check .lz4; check .zip; check .7z
-
-          RELEASE_NAME="fileshare-${{ matrix.platform }}${{ matrix.ext }}${BEST_EXT}"
-          echo "--- Best: ${BEST_EXT:-raw} ($BEST_SIZE bytes) → $RELEASE_NAME ---"
-
-          case "$BEST_EXT" in
-            .gz)  gzip  -9 -c "$BINARY"             > "dist/release/${RELEASE_NAME}" ;;
-            .bz2) bzip2 -9 -c "$BINARY"             > "dist/release/${RELEASE_NAME}" ;;
-            .xz)  xz    -9 -c "$BINARY"             > "dist/release/${RELEASE_NAME}" ;;
-            .zst) zstd  --ultra -22 -q -c "$BINARY" > "dist/release/${RELEASE_NAME}" ;;
-            .lz4) lz4   -9 -f -q "$BINARY" "dist/release/${RELEASE_NAME}" ;;
-            .zip) zip   -9j "dist/release/${RELEASE_NAME}" "$BINARY" ;;
-            .7z)  7z a "dist/release/${RELEASE_NAME}" "$BINARY" >/dev/null ;;
-            *)    cp "$BINARY" "dist/release/${RELEASE_NAME}" ;;
-          esac
-
-          echo "RELEASE_NAME=${RELEASE_NAME}" >> "$GITHUB_OUTPUT"
+          cp "$BINARY" "${BASE}"
+          gzip  -9 -c "$BINARY"             > "${BASE}.gz"  || true
+          bzip2 -9 -c "$BINARY"             > "${BASE}.bz2" || true
+          xz    -9 -c "$BINARY"             > "${BASE}.xz"  || true
+          zstd  --ultra -22 -q -c "$BINARY" > "${BASE}.zst" || true
+          lz4   -9 -f -q "$BINARY" "${BASE}.lz4"            || true
+          zip   -9j "${BASE}.zip" "$BINARY"                  || true
+          7z a "${BASE}.7z" "$BINARY" >/dev/null             || true
 
       - name: Compute SHA256 (raw binary)
         id: sha256
@@ -116,15 +85,34 @@ jobs:
           SHA=$(sha256sum dist/fileshare-${{ matrix.platform }}${{ matrix.ext }} | awk '{print $1}')
           echo "SHA256=$SHA" >> $GITHUB_OUTPUT
 
-      - name: Publish to server
+      - name: Publish all variants to server
         run: |
-          curl -fsSL \
-            -X POST "${{ vars.DEPLOY_SERVER }}/api/version" \
-            -H "X-Deploy-Key: ${{ secrets.DEPLOY_API_KEY }}" \
-            -F "version=${{ steps.version.outputs.VERSION }}" \
-            -F "platform=${{ matrix.platform }}" \
-            -F "sha256=${{ steps.sha256.outputs.SHA256 }}" \
-            -F "file=@dist/fileshare-${{ matrix.platform }}${{ matrix.ext }}"
+          VER="${{ steps.version.outputs.VERSION }}"
+          PLAT="${{ matrix.platform }}"
+          SHA="${{ steps.sha256.outputs.SHA256 }}"
+          BASE="dist/release/fileshare-${PLAT}${{ matrix.ext }}"
+
+          upload() {
+            local comp=$1 file=$2
+            [ -f "$file" ] || return 0
+            curl -fsSL \
+              -X POST "${{ vars.DEPLOY_SERVER }}/api/version" \
+              -H "X-Deploy-Key: ${{ secrets.DEPLOY_API_KEY }}" \
+              -F "version=${VER}" \
+              -F "platform=${PLAT}" \
+              -F "sha256=${SHA}" \
+              -F "compression=${comp}" \
+              -F "file=@${file}"
+          }
+
+          upload raw "${BASE}"
+          upload gz  "${BASE}.gz"
+          upload bz2 "${BASE}.bz2"
+          upload xz  "${BASE}.xz"
+          upload zst "${BASE}.zst"
+          upload lz4 "${BASE}.lz4"
+          upload zip "${BASE}.zip"
+          upload 7z  "${BASE}.7z"
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
@@ -143,6 +131,11 @@ jobs:
           pattern: release-*
           path: dist/release
           merge-multiple: true
+
+      - name: Fetch versioned install scripts
+        run: |
+          curl -fsSL "${{ vars.DEPLOY_SERVER }}/install.sh"  -o dist/release/install.sh
+          curl -fsSL "${{ vars.DEPLOY_SERVER }}/install.ps1" -o dist/release/install.ps1
 
       - name: Create Gitea release
         uses: akkuman/gitea-release-action@v1
