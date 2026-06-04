@@ -95,7 +95,7 @@ jobs:
           upload() {
             local comp=$1 file=$2
             [ -f "$file" ] || return 0
-            curl -fsSL \
+            curl -sL -v \
               -X POST "${{ vars.DEPLOY_SERVER }}/api/version" \
               -H "X-Deploy-Key: ${{ secrets.DEPLOY_API_KEY }}" \
               -F "version=${VER}" \
